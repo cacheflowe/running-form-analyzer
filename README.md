@@ -5,6 +5,8 @@ keeps only the frames where a pose is detected, draws the skeleton with joint
 angles, finds each foot strike, and flags overstriding. You can scrub through
 the kept frames or render an annotated clip.
 
+![Running Form Analyzer](media/example-output.png)
+
 - **Vite** dev server and build (static, deploys to GitHub Pages)
 - **MediaPipe Pose Landmarker** (`@mediapipe/tasks-vision`, VIDEO mode, GPU with CPU fallback)
 - **Mediabunny** for frame decoding (`CanvasSink`), camera recording
