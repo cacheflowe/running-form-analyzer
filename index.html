@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Running Form Analyzer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃</text></svg>" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Running Form Analyzer</h1>
+      <p class="tagline">
+        Record or upload a side-view clip of someone running. Frames with a detected pose are kept, annotated with
+        joint angles, and checked at each foot strike for overstriding.
+      </p>
+    </header>
+
+    <main>
+      <!-- 1. Source -->
+      <section id="source-section" class="panel">
+        <div class="source-head">
+          <h2>1 · Video source</h2>
+          <div class="segmented" role="tablist" aria-label="Video source">
+            <button id="mode-upload" type="button" role="tab" aria-selected="true">Upload</button>
+            <button id="mode-camera" type="button" role="tab" aria-selected="false">Camera</button>
+          </div>
+        </div>
+        <div class="source-body">
+          <label id="drop-zone" class="drop-zone" for="file-input">
+            <input id="file-input" type="file" accept="video/*" hidden />
+            <strong>Upload a video</strong>
+            <span>Drop a file here or click to choose. Slow-motion (120–240 fps) clips work best.</span>
+          </label>
+
+          <div id="recorder" class="recorder" hidden>
+            <div class="recorder-preview">
+              <video id="camera-preview" muted playsinline></video>
+              <span id="rec-indicator" class="rec-indicator" hidden>● REC 0:00</span>
+            </div>
+            <div class="row">
+              <select id="camera-select" aria-label="Camera"></select>
+              <button id="camera-btn" type="button">Start camera</button>
+              <button id="record-btn" type="button" disabled>Record</button>
+            </div>
+          </div>
+        </div>
+        <details class="tips">
+          <summary>Filming tips</summary>
+          <ul>
+            <li>Film from the side, camera at hip height, level, and still (tripod or treadmill).</li>
+            <li>Keep the whole body in frame, including the feet. Good light helps the pose model.</li>
+            <li>Higher frame rates capture the exact moment of foot strike; 120 fps or more is ideal.</li>
+            <li>
+              Phone slow-mo: if the file plays back slowed down (e.g. shared/exported from Photos), set
+              <em>Footage speed</em> below so timing metrics are in real time.
+            </li>
+          </ul>
+        </details>
+      </section>
+
+      <!-- 2. Analysis settings -->
+      <section id="settings-section" class="panel">
+        <h2>2 · Analyze</h2>
+        <div class="settings-grid">
+          <label>
+            Pose model
+            <select id="model-select">
+              <option value="lite">Lite (fastest)</option>
+              <option value="full">Full</option>
+              <option value="heavy" selected>Heavy (most accurate)</option>
+            </select>
+          </label>
+          <label>
+            Analysis resolution
+            <select id="res-select">
+              <option value="720">720p</option>
+              <option value="1080" selected>1080p</option>
+              <option value="0">Source</option>
+            </select>
+          </label>
+          <label>
+            Footage speed
+            <select id="timescale-select" title="If the file plays back in slow motion, choose how much it was slowed">
+              <option value="1" selected>Real time</option>
+              <option value="2">Slowed 2×</option>
+              <option value="4">Slowed 4× (120 fps)</option>
+              <option value="8">Slowed 8× (240 fps)</option>
+            </select>
+          </label>
+          <label>
+            Runner height (cm, optional)
+            <input id="height-input" type="number" min="100" max="230" step="1" placeholder="e.g. 178" />
+          </label>
+        </div>
+        <div class="row">
+          <button id="analyze-btn" type="button" class="primary" disabled>Analyze video</button>
+          <button id="cancel-btn" type="button" hidden>Cancel</button>
+          <span id="source-info" class="muted"></span>
+        </div>
+        <progress id="analyze-progress" max="1" value="0" hidden></progress>
+        <p id="status" class="status" role="status"></p>
+      </section>
+
+      <!-- 3. Results -->
+      <section id="results-section" class="panel" hidden>
+        <h2>3 · Review</h2>
+        <div class="results-layout">
+          <div class="viewer">
+            <canvas id="viewer-canvas"></canvas>
+            <canvas id="timeline-canvas" class="timeline" title="Click to seek. Ticks mark foot strikes."></canvas>
+            <input id="scrub" type="range" min="0" max="0" step="1" value="0" aria-label="Frame" />
+            <div class="transport">
+              <button id="prev-strike" type="button" title="Previous foot strike (Shift+←)" aria-label="Previous foot strike">⏮<span class="lbl"> Strike</span></button>
+              <button id="prev-frame" type="button" title="Previous frame (←)" aria-label="Previous frame">◀</button>
+              <button id="play-btn" type="button" title="Play / pause (Space)" aria-label="Play or pause">▶<span class="lbl"> Play</span></button>
+              <button id="next-frame" type="button" title="Next frame (→)" aria-label="Next frame">▶</button>
+              <button id="next-strike" type="button" title="Next foot strike (Shift+→)" aria-label="Next foot strike"><span class="lbl">Strike </span>⏭</button>
+            </div>
+            <div class="row view-options">
+              <label class="inline">
+                Speed
+                <select id="speed-select">
+                  <option value="1">1×</option>
+                  <option value="0.5">½×</option>
+                  <option value="0.25" selected>¼×</option>
+                  <option value="0.1">⅒×</option>
+                </select>
+              </label>
+              <label class="inline"><input id="show-angles" type="checkbox" checked /> Angles</label>
+              <label class="inline"><input id="show-strike" type="checkbox" checked /> Strike guides</label>
+              <label class="inline" title="Path of the hips over the last stride, to show bounce"><input id="show-trail" type="checkbox" checked /> Hip trail</label>
+              <label class="inline"><input id="crop-toggle" type="checkbox" checked /> Crop to runner</label>
+            </div>
+            <p id="frame-info" class="muted mono small"></p>
+          </div>
+
+          <aside class="metrics">
+            <section class="m-frame">
+              <h3>This frame</h3>
+              <div id="frame-metrics" class="metric-list"></div>
+            </section>
+            <section class="m-summary">
+              <h3>Summary</h3>
+              <div id="summary-metrics" class="metric-list"></div>
+            </section>
+          </aside>
+        </div>
+
+        <div class="export">
+          <h3>Export annotated clip</h3>
+          <div class="row">
+            <label class="inline">
+              Playback
+              <select id="export-speed">
+                <option value="1">Real time</option>
+                <option value="0.5">½× slow-mo</option>
+                <option value="0.25" selected>¼× slow-mo</option>
+              </select>
+            </label>
+            <label class="inline">
+              Pause on strikes
+              <select id="export-hold">
+                <option value="0">Off</option>
+                <option value="0.5">0.5 s</option>
+                <option value="1" selected>1 s</option>
+              </select>
+            </label>
+            <label class="inline">
+              <input id="export-strikes-only" type="checkbox" /> Strikes only
+            </label>
+            <button id="export-btn" type="button" class="primary">Render video</button>
+          </div>
+          <progress id="export-progress" max="1" value="0" hidden></progress>
+          <div id="export-result" class="export-result" hidden>
+            <video id="export-video" controls playsinline loop></video>
+            <a id="export-link" class="button" download>Download</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
