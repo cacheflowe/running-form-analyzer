@@ -147,6 +147,7 @@ function measurePhases(frames: PoseFrame[], metrics: FrameMetrics[], strikes: St
     // Toe-off: last contact frame, only if the foot leaves the ground in view
     let i = s.frame;
     while (inSeg(i + 1) && metrics[i + 1].contact[s.side]) i++;
+    measureLoad(frames, metrics, s, i, legLength);
     if (inSeg(i + 1)) {
       s.toeOffFrame = i;
       s.contactTime = frames[i + 1].time - s.time;
@@ -181,6 +182,36 @@ function measurePhases(frames: PoseFrame[], metrics: FrameMetrics[], strikes: St
       s.bounce = (hi - lo) / legLength;
     }
   });
+}
+
+/**
+ * Loaded frame: after touchdown, body weight comes onto the foot. The foot
+ * rolls flat (a heel striker's forefoot slaps down, a forefoot striker's heel
+ * drops), the shoe compresses and the knee keeps bending, so the whole foot
+ * (heel, toe and ankle together) is pressed lowest a frame or a few
+ * milliseconds after first touch. Takes the frame where their mean height is
+ * lowest within the first 0.12 s of stance (before the heel starts lifting),
+ * keeping the earliest frame within 0.5% of a leg length so landmark jitter
+ * doesn't push it late.
+ */
+function measureLoad(frames: PoseFrame[], metrics: FrameMetrics[], s: Strike, lastContact: number, legLength: number) {
+  const f = SIDE[s.side];
+  const end = Math.min(lastContact, frames.length - 1);
+  const depth: number[] = [];
+  for (let j = s.frame; j <= end && frames[j].time - s.time <= 0.12; j++) {
+    const p = frames[j].pts;
+    depth.push((p[f.heel].y + p[f.toe].y + p[f.ankle].y) / 3);
+  }
+  if (!depth.length) return;
+  const lowest = Math.max(...depth);
+  const k = depth.findIndex((y) => y >= lowest - 0.005 * legLength);
+  const load = s.frame + k;
+  s.loadFrame = load;
+  s.timeToLoad = frames[load].time - s.time;
+  const p = frames[load].pts;
+  if (visible(p[f.knee], p[f.ankle])) {
+    s.shinAtLoad = Math.atan2(metrics[load].dir * (p[f.ankle].x - p[f.knee].x), p[f.ankle].y - p[f.knee].y) * DEG;
+  }
 }
 
 /**
@@ -362,6 +393,10 @@ export interface Summary {
   contactMsBySide: Record<Side, number | undefined>;
   /** Median vertical oscillation per step, in leg lengths. */
   bounce: number | undefined;
+  /** Mean ms from touchdown to the loaded frame (a mean, since at low fps most values are 0 or 1 frame). */
+  timeToLoadMs: number | undefined;
+  /** Median shin angle at the loaded frame. */
+  shinAtLoad: number | undefined;
   hipExtension: number | undefined;
   swingKneeFlex: number | undefined;
   elbow: number;
@@ -369,6 +404,10 @@ export interface Summary {
 }
 
 const defined = (xs: (number | undefined)[]) => xs.filter((x): x is number => x !== undefined && Number.isFinite(x));
+const meanOrUndef = (xs: (number | undefined)[]) => {
+  const d = defined(xs);
+  return d.length ? mean(d) : undefined;
+};
 const medianOrUndef = (xs: (number | undefined)[]) => {
   const d = defined(xs);
   return d.length ? median(d) : undefined;
@@ -416,6 +455,8 @@ export function summarize(frames: PoseFrame[], metrics: FrameMetrics[], strikes:
       right: ms(medianOrUndef(strikes.filter((s) => s.side === "right").map((s) => s.contactTime))),
     },
     bounce: medianOrUndef(strikes.map((s) => s.bounce)),
+    timeToLoadMs: ms(meanOrUndef(strikes.map((s) => s.timeToLoad))),
+    shinAtLoad: medianOrUndef(strikes.map((s) => s.shinAtLoad)),
     hipExtension: medianOrUndef(strikes.map((s) => s.hipExtension)),
     swingKneeFlex: medianOrUndef(strikes.map((s) => s.swingKneeFlex)),
     elbow: median(elbows),

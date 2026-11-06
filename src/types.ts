@@ -54,6 +54,15 @@ export interface Strike {
   /** Knee flexion at contact (0 = straight leg). */
   kneeFlexion: number;
   overstride: boolean;
+  /**
+   * Loaded frame: the frame after touchdown where the foot is pressed lowest
+   * (weight on it, shoe compressed). Can equal `frame`.
+   */
+  loadFrame?: number;
+  /** Seconds from touchdown to the loaded frame. */
+  timeToLoad?: number;
+  /** Shin angle from vertical at the loaded frame. */
+  shinAtLoad?: number;
   /** Last frame this foot is on the ground (when it leaves the ground in view). */
   toeOffFrame?: number;
   /** Seconds from touchdown to toe-off. */

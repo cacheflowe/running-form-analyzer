@@ -48,6 +48,7 @@ Each metric is measured at the first frame a foot is judged to be on the ground:
 - **Reach**: horizontal ankle distance ahead of the hip center, in leg lengths. Above ~0.3 suggests overstriding.
 - **Knee bend**: flexion at contact. A nearly straight knee (<8°) means braking.
 - **Foot angle**: heel→toe line vs horizontal. Classified as heel, midfoot or forefoot.
+- **Loaded frame** (after touchdown): the frame where the whole foot (heel, toe, ankle) is pressed lowest, i.e. weight is on it, the shoe is compressed and the knee is absorbing. Shown as a dot on the timeline and a purple bar under the foot; the strike buttons step through touchdown, then loaded frame. **To loaded** is the time between them (heel strikers tend to show a longer gap as the forefoot slaps down). **Shin at load** shows how far the body has rolled over the foot. Overstride metrics stay at touchdown. Best at ≥120 fps; at 30 fps it's usually 0 or 1 frame.
 - **Summary**: cadence (from same-foot stride time), ground contact time, typical elbow angle and trunk lean.
 
 ### Limitations

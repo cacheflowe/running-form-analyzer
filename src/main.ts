@@ -379,6 +379,8 @@ function strikeMetrics(s: Strike, n: number) {
     metric("Shin", fmt(s.shinAngle), rate.shin(s.shinAngle), "vs vertical") +
     metric("Reach", fmtLegs(s.reach), rate.reach(s.reach), "ahead of hip") +
     metric("Knee bend", fmt(s.kneeFlexion), rate.kneeFlexAtContact(s.kneeFlexion)) +
+    (s.timeToLoad !== undefined ? metric("To loaded", fmtLoad(s.timeToLoad * 1000), undefined, "after touchdown") : "") +
+    (s.shinAtLoad !== undefined && s.loadFrame !== s.frame ? metric("Shin at load", fmt(s.shinAtLoad), rate.shin(s.shinAtLoad)) : "") +
     (s.contactTime !== undefined ? metric("Contact", `${Math.round(s.contactTime * 1000)} ms`) : "") +
     (s.hipExtension !== undefined ? metric("Hip ext.", fmt(s.hipExtension), undefined, "at toe-off") : "") +
     (s.swingKneeFlex !== undefined ? metric("Heel recovery", fmt(s.swingKneeFlex), undefined, "peak knee bend") : "") +
@@ -398,6 +400,8 @@ function renderSummary(a: Analysis) {
       metric("Foot strike", `${ft.heel} heel · ${ft.midfoot} mid · ${ft.forefoot} fore`) +
       metric("Cadence", s.cadence ? `${Math.round(s.cadence)} spm` : "–", s.cadence ? (s.cadence >= 165 ? "good" : s.cadence >= 150 ? "warn" : "bad") : undefined) +
       metric("Bounce", fmtLegs(s.bounce), s.bounce !== undefined ? rate.bounce(s.bounce) : undefined, "vertical oscillation") +
+      metric("To loaded", fmtLoad(s.timeToLoadMs), undefined, "touchdown → weight on foot") +
+      metric("Shin at load", fmt(s.shinAtLoad), s.shinAtLoad !== undefined ? rate.shin(s.shinAtLoad) : undefined) +
       metric("Ground contact", fmtMs(s.contactMs), undefined, contactSplit(s.contactMsBySide)) +
       metric("Hip extension", fmt(s.hipExtension), undefined, "at toe-off") +
       metric("Heel recovery", fmt(s.swingKneeFlex), undefined, "peak swing knee bend") +
@@ -407,6 +411,8 @@ function renderSummary(a: Analysis) {
 }
 
 const fmtMs = (ms: number | undefined) => (ms === undefined ? "–" : `${Math.round(ms)} ms`);
+/** Time from touchdown to the loaded frame; 0 means the same frame. */
+const fmtLoad = (ms: number | undefined) => (ms === undefined ? "–" : ms < 1 ? "same frame" : fmtMs(ms));
 /** "L 210 · R 240" when both sides were measured, to spot asymmetry. */
 function contactSplit(by: Record<Side, number | undefined>) {
   return by.left !== undefined && by.right !== undefined ? `L ${Math.round(by.left)} · R ${Math.round(by.right)}` : "";

@@ -79,7 +79,7 @@ export function drawFrame(
   ctx.restore();
 
   // Banner for the most recent strike
-  const banner = active.find((a) => a.framesSince === 0) ?? active[0];
+  const banner = active.find((a) => a.framesSince === 0) ?? active.find(isLoadFrame) ?? active[0];
   if (opts.strikeGuides && banner) drawBanner(ctx, banner, s, w);
 
   if (opts.hud) label(ctx, opts.hud, 10 * s, h - 10 * s, "rgba(0,0,0,0.6)", "#fff", s, "left", "bottom");
@@ -95,6 +95,10 @@ function drawPose(ctx: Ctx, frame: PoseFrame, m: FrameMetrics, active: ActiveStr
 
   // Strike guides first so the skeleton sits on top
   if (opts.strikeGuides) for (const a of active) drawStrikeGuides(ctx, a, m, s);
+
+  // Loaded frame: the foot is pressed down and carrying weight
+  const loaded = opts.strikeGuides ? active.find(isLoadFrame) : undefined;
+  if (loaded) drawLoadMarker(ctx, pts, loaded.strike, m, s);
 
   // Skeleton
   ctx.lineCap = "round";
@@ -235,9 +239,37 @@ function drawStrikeGuides(ctx: Ctx, a: ActiveStrike, m: FrameMetrics, s: number)
   ctx.restore();
 }
 
+/** The loaded frame of a strike (weight on the foot), when it comes after touchdown. */
+function isLoadFrame(a: ActiveStrike) {
+  const { strike } = a;
+  return strike.loadFrame !== undefined && strike.loadFrame !== strike.frame && a.framesSince === strike.loadFrame - strike.frame;
+}
+
+/** Bar under the loaded foot, plus the time since touchdown and the shin angle now. */
+function drawLoadMarker(ctx: Ctx, pts: Pt[], strike: Strike, m: FrameMetrics, s: number) {
+  const f = SIDE[strike.side];
+  const heel = pts[f.heel], toe = pts[f.toe], knee = pts[f.knee], ankle = pts[f.ankle];
+  const y = m.groundY + 3 * s;
+  ctx.save();
+  line(ctx, { x: heel.x, y }, { x: toe.x, y }, "#ce93d8", 6 * s);
+  const ms = Math.round((strike.timeToLoad ?? 0) * 1000);
+  const shin = strike.shinAtLoad !== undefined ? ` · shin ${Math.round(strike.shinAtLoad)}°` : "";
+  const dirSign = Math.sign(toe.x - heel.x) || 1;
+  const x = dirSign > 0 ? Math.max(heel.x, toe.x) + 10 * s : Math.min(heel.x, toe.x) - 10 * s;
+  label(ctx, `Loaded +${ms} ms${shin}`, x, y - 8 * s, "rgba(0,0,0,0.75)", "#ce93d8", s, dirSign > 0 ? "left" : "right", "bottom");
+  // Shin now, so the change from touchdown (strike guide) is visible
+  if (strike.shinAtLoad !== undefined) line(ctx, knee, ankle, "#ce93d8", 3 * s);
+  ctx.restore();
+}
+
 function drawBanner(ctx: Ctx, a: ActiveStrike, s: number, w: number) {
   const { strike } = a;
   const side = strike.side === "left" ? "LEFT" : "RIGHT";
+  if (isLoadFrame(a)) {
+    const ms = Math.round((strike.timeToLoad ?? 0) * 1000);
+    label(ctx, `${side} FOOT · Loaded (weight on foot) +${ms} ms after touchdown`, w / 2, 12 * s, "rgba(0,0,0,0.75)", "#ce93d8", s * 1.15, "center", "top");
+    return;
+  }
   const foot = { heel: "Heel strike", midfoot: "Midfoot strike", forefoot: "Forefoot strike" }[strike.footType];
   const verdict = strike.overstride ? "OVERSTRIDE" : "Foot under body";
   const color = strike.overstride ? COLORS.bad : COLORS.good;

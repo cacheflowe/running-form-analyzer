@@ -108,14 +108,14 @@
         <div class="results-layout">
           <div class="viewer">
             <canvas id="viewer-canvas"></canvas>
-            <canvas id="timeline-canvas" class="timeline" title="Click to seek. Ticks mark foot strikes."></canvas>
+            <canvas id="timeline-canvas" class="timeline" title="Click to seek. Ticks mark foot strikes; dots mark the loaded frame (weight on foot)."></canvas>
             <input id="scrub" type="range" min="0" max="0" step="1" value="0" aria-label="Frame" />
             <div class="transport">
-              <button id="prev-strike" type="button" title="Previous foot strike (Shift+←)" aria-label="Previous foot strike">⏮<span class="lbl"> Strike</span></button>
+              <button id="prev-strike" type="button" title="Previous touchdown / loaded frame (Shift+←)" aria-label="Previous foot strike">⏮<span class="lbl"> Strike</span></button>
               <button id="prev-frame" type="button" title="Previous frame (←)" aria-label="Previous frame">◀</button>
               <button id="play-btn" type="button" title="Play / pause (Space)" aria-label="Play or pause">▶<span class="lbl"> Play</span></button>
               <button id="next-frame" type="button" title="Next frame (→)" aria-label="Next frame">▶</button>
-              <button id="next-strike" type="button" title="Next foot strike (Shift+→)" aria-label="Next foot strike"><span class="lbl">Strike </span>⏭</button>
+              <button id="next-strike" type="button" title="Next touchdown / loaded frame (Shift+→)" aria-label="Next foot strike"><span class="lbl">Strike </span>⏭</button>
             </div>
             <div class="row view-options">
               <label class="inline">

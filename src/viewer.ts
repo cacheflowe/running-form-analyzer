@@ -100,12 +100,15 @@ export class Viewer {
     this.seek(this.index + delta);
   }
 
-  /** Jump to the next (+1) or previous (-1) foot strike. */
+  /**
+   * Jump to the next (+1) or previous (-1) key frame: each strike's touchdown,
+   * then its loaded frame when that's a later frame.
+   */
   jumpStrike(dir: 1 | -1) {
     this.pause();
-    const s = this.a.strikes;
-    const target = dir > 0 ? s.find((x) => x.frame > this.index) : [...s].reverse().find((x) => x.frame < this.index);
-    if (target) this.seek(target.frame);
+    const keys = [...new Set(this.a.strikes.flatMap((s) => [s.frame, s.loadFrame ?? s.frame]))].sort((a, b) => a - b);
+    const target = dir > 0 ? keys.find((k) => k > this.index) : keys.reverse().find((k) => k < this.index);
+    if (target !== undefined) this.seek(target);
   }
 
   redraw() {
@@ -216,6 +219,12 @@ export class Viewer {
       ctx.fillStyle = s.overstride ? COLORS.bad : s.side === "left" ? COLORS.left : COLORS.right;
       const top = s.side === "left";
       ctx.fillRect(x(s.frame) - dpr, top ? 2 * dpr : mid + 5 * dpr, 2 * dpr, mid - 7 * dpr);
+      // Loaded frame: a dot at the tick's outer end
+      if (s.loadFrame !== undefined && s.loadFrame !== s.frame) {
+        ctx.beginPath();
+        ctx.arc(x(s.loadFrame), top ? 4 * dpr : h - 4 * dpr, 2.5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.fillStyle = "#fff";

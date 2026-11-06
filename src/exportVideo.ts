@@ -15,7 +15,7 @@ import type { Analysis } from "./types";
 export interface ExportOptions {
   /** Playback speed relative to real time (0.25 = 4× slow motion). */
   speed: number;
-  /** Seconds to freeze on each foot-strike frame. */
+  /** Seconds to freeze on each touchdown and loaded frame. */
   hold: number;
   /** Only include a short window around each strike. */
   strikesOnly: boolean;
@@ -56,7 +56,8 @@ export async function exportAnnotatedVideo(a: Analysis, opts: ExportOptions): Pr
   await output.start();
 
   const active = buildActiveStrikes(a.frames, a.metrics, a.strikes);
-  const strikeFrames = new Set(a.strikes.map((s) => s.frame));
+  // Pause on each touchdown and on its loaded frame
+  const strikeFrames = new Set(a.strikes.flatMap((s) => [s.frame, s.loadFrame ?? s.frame]));
   let t = 0;
   let pendingDur = 0;
 
